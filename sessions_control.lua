@@ -10,84 +10,43 @@ We will also save the full screen status, will set window full screen if it was.
 Author: PapEr (zw.paper@gmail.com)
 --]]
 
---[[
-ToDo:
-* Detect if there is a save file, if not create a default
-* Add a new session
-* delete a session
-* jump to a session easily
-* show windows in current session
-
-MayBe:
-* Change session to a table like
-	{{win, isFull}, {...}, name=name_of_session}
-	and use ipairs to find window
---]]
-
-
 
 require('sessions_head')
 
 -- init
 sessionsRead()
 
+key_fn = {'cmd','alt','ctrl'}
+key_session_show = 'P'
+key_session_pre = '['
+key_session_next = ']'
+key_win_add_to_curr = 'L'
+key_win_del_from_curr = ';'
 
---Show sessions list
-hs.hotkey.bind({'cmd', 'alt', 'ctrl'}, 'I', sessionsShow)
+-- Show sessions list
+hs.hotkey.bind(key_fn, key_session_show, sessionsShow)
 
-
---Add current window into session
-hs.hotkey.bind({'cmd', 'alt', 'ctrl'}, 'O', function()
-	local win = hs.window.focusedWindow()
-	if win:id() then
-		if findInList(sessions[current][index_windows], win) then
-			hs.notify.new({title='Add window to session', informativeText='Already added'}):send():release()
-			return
-		end
-		local status = {}
-		table.insert(status, win)
-		table.insert(status, win:isFullScreen())
-		table.insert(sessions[current][index_windows], status)
-		hs.notify.new({title='Add window to session',
-					  informativeText=win:title() .. ' added' .. ' (All: '.. #sessions[current][index_windows] .. ')'})
-					 :send():release()
-	else
-		hs.notify.new({title='Add window to session', informativeText='No focused window'}):send():release()
-	end
-
-end)
-
-
-hs.hotkey.bind({'cmd', 'alt', 'ctrl'}, 'P', function()
-	local win = hs.window.focusedWindow()
-	if win:id() then
-		local key = findInList(sessions[current][index_windows], win)
-		if key then
-			table.remove(sessions[current][index_windows], key)
-			hs.notify.new({title='Del window from session',
-						  informativeText=win:title() .. ' Deleted' .. ' (All: '.. #sessions[current][index_windows] .. ')'})
-						 :send():release()
-		else
-			hs.notify.new({title='Del window from session', informativeText='Not in this session'}):send():release()
-		end
-	else
-		hs.notify.new({title='Add window to session', informativeText='No focused window'}):send():release()
-	end
-
-end)
-
-
-function sessionSwitchPrv()
+-- Switch to previous session
+hs.hotkey.bind(key_fn, key_session_pre, function()
 	local i = current - 1
 	if current == 1 then i = #sessions end
 	sessionSwitch(i)
-end
-hs.hotkey.bind({'cmd','alt','ctrl'}, '[', sessionSwitchPrv)
+end)
 
-
-function sessionSwitchNext()
+-- Switch to next session
+hs.hotkey.bind(key_fn, key_session_next, function()
 	local i = current + 1
 	if current == #sessions then i = 1 end
 	sessionSwitch(i)
+end)
+
+
+--Add current window into session
+hs.hotkey.bind(key_fn, key_win_add_to_curr, delWinFromCurrent)
+
+
+hs.hotkey.bind(key_fn, key_win_del_from_curr, addWinToCurrent)
+
+for i = 1, #sessions do
+	hs.hotkey.bind(key_fn, tostring(i), function() sessionSwitch(i) end)
 end
-hs.hotkey.bind({'cmd','alt','ctrl'}, ']', sessionSwitchNext)

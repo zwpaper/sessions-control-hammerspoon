@@ -29,8 +29,10 @@ index_isFull = 2
 --[[
 Variable
 --]]
+sessions = {}
 current = 1
 local path_session_save = hs.configdir .. '/sessions.sav'
+local path_config = hs.configdir .. '/sessions.cfg'
 
 
 --[[
@@ -80,10 +82,13 @@ end
 
 
 function sessionsRead()
-	local sessions_file = assert(io.open(path_session_save, "r"))
-	sessions = {}
+	local file_sessions = io.open(path_session_save, "r")
+	if not file_sessions then
+		sessionsSave{{'default', {}}}
+		file_sessions = io.open(path_session_save, "r")
+	end
 	local close_win_counter = 0
-	for line in sessions_file:lines() do
+	for line in file_sessions:lines() do
 		if line:sub(1, 1) == '{' then
 			if #line < 2 then
 				hs.notify.new({title='Read Error', informativeText='No session name after "{"'}):send():release()
@@ -128,7 +133,6 @@ function sessionsRead()
 				end
 				table.insert(sessions[#sessions][index_windows], {window, isFull})
 			end
-
 		end
 	end
 
@@ -156,10 +160,58 @@ function sessionsSave(se)
 
 	session_to_save = session_to_save .. '>' .. current .. '\n'
 
-	local sessions_file = assert(io.open(path_session_save, "w"))
-	sessions_file:write(session_to_save)
-	sessions_file:flush()
-	sessions_file:close()
+	local file_sessions = assert(io.open(path_session_save, "w"))
+	local err, msg = file_sessions:write(session_to_save)
+	if not err then
+		hs.notify.new({title='Write Error', informativeText='Can not save sessions to disk'}):send():release()
+		error('Save sessions error: ' .. msg)
+	end
+	file_sessions:flush()
+	file_sessions:close()
+end
+
+
+-- Window handling
+function addWinToCurrent()
+	local win = hs.window.focusedWindow()
+	if win:id() then
+		local key = findInList(sessions[current][index_windows], win)
+		if key then
+			table.remove(sessions[current][index_windows], key)
+			hs.notify.new({title='Del window from ' .. sessions[current][index_session],
+						  informativeText=win:title() .. ' Deleted' .. ' (All: '.. #sessions[current][index_windows] .. ')'})
+						 :send():release()
+		else
+			hs.notify.new({title='Del window from ' .. sessions[current][index_session],
+						  informativeText='Not in this session'}):send():release()
+		end
+	else
+		hs.notify.new({title='Del window from ' .. sessions[current][index_session],
+			   		  informativeText='No focused window'}):send():release()
+	end
+end
+
+
+function delWinFromCurrent()
+	local win = hs.window.focusedWindow()
+	if win:id() then
+		if findInList(sessions[current][index_windows], win) then
+			hs.notify.new({title='Add window to ' .. sessions[current][index_session],
+						  informativeText='Already added'}):send():release()
+			return
+		end
+		local status = {}
+		table.insert(status, win)
+		table.insert(status, win:isFullScreen())
+		table.insert(sessions[current][index_windows], status)
+		hs.notify.new({title='Add window to ' .. sessions[current][index_session],
+					  informativeText=win:title() .. ' added' .. ' (All: '.. #sessions[current][index_windows] .. ')'})
+					 :send():release()
+	else
+		hs.notify.new({title='Add window to ' .. sessions[current][index_session],
+					  informativeText='No focused window'}):send():release()
+	end
+
 end
 
 
