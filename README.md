@@ -9,12 +9,18 @@ We will also save the full screen status, will set window full screen if it was.
 
 For now, we only minimize the windows, and will update to hide the windows not in work.
 
+# Features
+* Create sessions in sav file
+* Add windows to current sessions
+* Switching among sessions
+	* Switch to next or previous one
+	* Switch by number
+* Auto save and load the sessions
+
 
 # ToDo:
-* Detect if there is a save file, if not create a default
 * Add a new session
 * delete a session
-* jump to a session easily
 * show windows in current session
 
 # MayBe:
