@@ -22,6 +22,9 @@ key_session_pre = '['
 key_session_next = ']'
 key_win_add_to_curr = 'L'
 key_win_del_from_curr = ';'
+--[[
+Key bindings
+--]]
 
 -- Show sessions list
 hs.hotkey.bind(key_fn, key_session_show, sessionsShow)
@@ -40,13 +43,28 @@ hs.hotkey.bind(key_fn, key_session_next, function()
 	sessionSwitch(i)
 end)
 
-
---Add current window into session
-hs.hotkey.bind(key_fn, key_win_add_to_curr, delWinFromCurrent)
-
-
-hs.hotkey.bind(key_fn, key_win_del_from_curr, addWinToCurrent)
-
+-- Binding numbers for fast switching
 for i = 1, #sessions do
 	hs.hotkey.bind(key_fn, tostring(i), function() sessionSwitch(i) end)
 end
+-- Add current window into current session
+hs.hotkey.bind(key_fn, key_win_add_to_curr, function()
+	local win = hs.window.focusedWindow()
+	if win:id() then
+		winAddToSession(win, current)
+	else
+		hs.notify.new({title='Add window to ' .. sessions[current][index_session],
+			   		  informativeText='No focused window'}):send():release()
+	end
+end)
+
+-- Del current window from currunt session
+hs.hotkey.bind(key_fn, key_win_del_from_curr, function()
+	local win = hs.window.focusedWindow()
+	if win:id() then
+		winDelFromSession(win, current)
+	else
+		hs.notify.new({title='Del window from ' .. sessions[current][index_session],
+			   		  informativeText='No focused window'}):send():release()
+	end
+end)

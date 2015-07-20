@@ -36,8 +36,9 @@ local path_config = hs.configdir .. '/sessions.cfg'
 
 
 --[[
-Functions
+Functions definition
 --]]
+
 -- session handling
 function sessionsShow()
 	if #sessions ~= 0 then
@@ -83,57 +84,62 @@ end
 
 function sessionsRead()
 	local file_sessions = io.open(path_session_save, "r")
-	if not file_sessions then
-		sessionsSave{{'default', {}}}
-		file_sessions = io.open(path_session_save, "r")
-	end
-	local close_win_counter = 0
-	for line in file_sessions:lines() do
-		if line:sub(1, 1) == '{' then
-			if #line < 2 then
-				hs.notify.new({title='Read Error', informativeText='No session name after "{"'}):send():release()
-				error('No session name after "{"')
-			else
-				table.insert(sessions, {line:sub(2, -1), {}})
-			end
-		elseif line:sub(1, 1) == '}' then
-			if #line ~= 1 then
-				hs.notify.new({title='Read Error', informativeText='Session not end with "}"'}):send():release()
-				error('Session not end with "}"')
-			end
-			if close_win_counter ~= 0 then
-				hs.notify.new({title='Read Sessions',
-							  informativeText=close_win_counter .. ' in ' .. sessions[#sessions][index_session] .. ' closed'})
-				 			 :send():release()
-				close_win_counter = 0
-			end
-		elseif line:sub(1, 1) == '>' then
-			current = tonumber(line:match('%d+', 2))
-		else
-			local id = line:match('%d+')
-			local isFull = line:match('%d', -1)
-			if not (id and isFull) then
-				hs.notify.new({title='Read Error', informativeText='Data in sav file is wrong'}):send():release()
-				error('Read windows error!')
-			end
-
-			local window = hs.window.windowForID(tonumber(id))
-			if not window then
-				close_win_counter = close_win_counter + 1
-			else
-				if isFull == '1' then
-					isFull = true
-				elseif isFull == '0' then
-					isFull = false
+	if file_sessions then
+		local close_win_counter = 0
+		for line in file_sessions:lines() do
+			if line:sub(1, 2) == '--' then
+				;
+			elseif line:sub(1, 2) == '##' then
+				;
+			elseif line:sub(1, 1) == '{' then
+				if #line < 2 then
+					hs.notify.new({title='Read Error', informativeText='No session name after "{"'}):send():release()
+					error('No session name after "{"')
 				else
-					hs.notify.new({title='Read Error', informativeText=isFull .. ' is not a valid value, unset fullscreen'})
-								 :send():release()
-					isFull = false
-					-- error('Read is_window_full_screen error!')
+					table.insert(sessions, {line:sub(2, -1), {}})
 				end
-				table.insert(sessions[#sessions][index_windows], {window, isFull})
+			elseif line:sub(1, 1) == '}' then
+				if #line ~= 1 then
+					hs.notify.new({title='Read Error', informativeText='Session not end with "}"'}):send():release()
+					error('Session not end with "}"')
+				end
+				if close_win_counter ~= 0 then
+					hs.notify.new({title='Read Sessions',
+								  informativeText=close_win_counter .. ' in ' .. sessions[#sessions][index_session] .. ' closed'})
+					 			 :send():release()
+					close_win_counter = 0
+				end
+			elseif line:sub(1, 1) == '>' then
+				current = tonumber(line:match('%d+', 2))
+			else
+				local id = line:match('%d+')
+				local isFull = line:match('%d', -1)
+				if not (id and isFull) then
+					hs.notify.new({title='Read Error', informativeText='Data in sav file is wrong'}):send():release()
+					error('Read windows error!')
+				end
+
+				local window = hs.window.windowForID(tonumber(id))
+				if not window then
+					close_win_counter = close_win_counter + 1
+				else
+					if isFull == '1' then
+						isFull = true
+					elseif isFull == '0' then
+						isFull = false
+					else
+						hs.notify.new({title='Read Error', informativeText=isFull .. ' is not a valid value, unset fullscreen'})
+									 :send():release()
+						isFull = false
+						-- error('Read is_window_full_screen error!')
+					end
+					table.insert(sessions[#sessions][index_windows], {window, isFull})
+				end
 			end
 		end
+	else
+		sessionsSave{{'default', {}}}
+		file_sessions = io.open(path_session_save, "r")
 	end
 
 	if current > #sessions or current < 1 then
@@ -172,50 +178,41 @@ end
 
 
 -- Window handling
-function addWinToCurrent()
-	local win = hs.window.focusedWindow()
-	if win:id() then
-		local key = findInList(sessions[current][index_windows], win)
-		if key then
-			table.remove(sessions[current][index_windows], key)
-			hs.notify.new({title='Del window from ' .. sessions[current][index_session],
-						  informativeText=win:title() .. ' Deleted' .. ' (All: '.. #sessions[current][index_windows] .. ')'})
-						 :send():release()
-		else
-			hs.notify.new({title='Del window from ' .. sessions[current][index_session],
-						  informativeText='Not in this session'}):send():release()
-		end
-	else
-		hs.notify.new({title='Del window from ' .. sessions[current][index_session],
-			   		  informativeText='No focused window'}):send():release()
-	end
-end
-
-
-function delWinFromCurrent()
-	local win = hs.window.focusedWindow()
-	if win:id() then
-		if findInList(sessions[current][index_windows], win) then
-			hs.notify.new({title='Add window to ' .. sessions[current][index_session],
-						  informativeText='Already added'}):send():release()
-			return
-		end
-		local status = {}
-		table.insert(status, win)
-		table.insert(status, win:isFullScreen())
-		table.insert(sessions[current][index_windows], status)
-		hs.notify.new({title='Add window to ' .. sessions[current][index_session],
-					  informativeText=win:title() .. ' added' .. ' (All: '.. #sessions[current][index_windows] .. ')'})
+function winDelFromSession(win, cur)
+	local key = findInList(sessions[cur][index_windows], win)
+	if key then
+		table.remove(sessions[cur][index_windows], key)
+		hs.notify.new({title='Del window from ' .. sessions[cur][index_session],
+					  informativeText=win:title() .. ' Deleted' .. ' (All: '.. #sessions[cur][index_windows] .. ')'})
 					 :send():release()
 	else
-		hs.notify.new({title='Add window to ' .. sessions[current][index_session],
-					  informativeText='No focused window'}):send():release()
+		hs.notify.new({title='Del window from ' .. sessions[cur][index_session],
+					  informativeText='Not in this session'}):send():release()
+	end
+end
+
+function winAddToSession(win, cur)
+	if findInList(sessions[cur][index_windows], win) then
+		hs.notify.new({title='Add window to ' .. sessions[cur][index_session],
+					  informativeText='Already added'}):send():release()
+		-- found win, return.
+		return
 	end
 
+	local status = {}
+	table.insert(status, win)
+	table.insert(status, win:isFullScreen())
+	table.insert(sessions[cur][index_windows], status)
+	hs.notify.new({title='Add window to ' .. sessions[cur][index_session],
+				  informativeText=win:title() .. ' added' .. ' (All: '.. #sessions[cur][index_windows] .. ')'})
+				 :send():release()
 end
 
 
--- utils
+--[[
+utils
+--]]
+
 function findInList(list, item)
 	if list then
 		for k, v in pairs(list) do
@@ -223,4 +220,20 @@ function findInList(list, item)
 		end
 	end
 	return nil
+end
+
+-- Handling sav file
+-- '--' means comment
+
+-- Read the front part of .sav file
+-- A line for one sessions
+function readUserSessions()
+
+end
+
+-- Read the end part of .sav file
+-- Generated by function
+-- Start from a line '##'
+function loadSystemCache()
+
 end
