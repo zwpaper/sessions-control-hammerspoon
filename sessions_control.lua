@@ -11,7 +11,7 @@ Author: PapEr (zw.paper@gmail.com)
 --]]
 
 
-require('sessions_head')
+require('sessions-control-hammerspoon/sessions_head')
 
 -- init
 sessionsRead()
