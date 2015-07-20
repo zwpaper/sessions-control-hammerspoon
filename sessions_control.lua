@@ -17,6 +17,7 @@ require('sessions-control-hammerspoon/sessions_head')
 sessionsRead()
 
 key_fn = {'cmd','alt','ctrl'}
+key_sessions_reload = 'O'
 key_session_show = 'P'
 key_session_pre = '['
 key_session_next = ']'
@@ -25,6 +26,9 @@ key_win_del_from_curr = ';'
 --[[
 Key bindings
 --]]
+
+-- Reload sessions
+hs.hotkey.bind(key_fn, key_sessions_reload, sessionsReload)
 
 -- Show sessions list
 hs.hotkey.bind(key_fn, key_session_show, sessionsShow)
@@ -50,7 +54,7 @@ end
 -- Add current window into current session
 hs.hotkey.bind(key_fn, key_win_add_to_curr, function()
 	local win = hs.window.focusedWindow()
-	if win:id() then
+	if win and win:id() then
 		winAddToSession(win, current)
 	else
 		hs.notify.new({title='Add window to ' .. sessions[current][index_session],
@@ -61,7 +65,7 @@ end)
 -- Del current window from currunt session
 hs.hotkey.bind(key_fn, key_win_del_from_curr, function()
 	local win = hs.window.focusedWindow()
-	if win:id() then
+	if win and win:id() then
 		winDelFromSession(win, current)
 	else
 		hs.notify.new({title='Del window from ' .. sessions[current][index_session],

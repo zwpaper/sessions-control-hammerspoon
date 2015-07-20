@@ -16,11 +16,9 @@ For now, we only minimize the windows, and will update to hide the windows not i
 	* Switch to next or previous one
 	* Switch by number
 * Auto save and load the sessions
-
+* Add and delete sessions by editing cfg file.
 
 # ToDo:
-* Add a new session
-* delete a session
 * show windows in current session
 
 # MayBe:
@@ -30,7 +28,7 @@ For now, we only minimize the windows, and will update to hide the windows not i
 
 	and use ipairs to find window
 
-* Hide windows not in work
+* Hide icon in dock that is not in current session
 
 # Contact
 Author: PapEr (zw.paper@gmail.com)

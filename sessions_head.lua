@@ -31,8 +31,8 @@ Variable
 --]]
 sessions = {}
 current = 1
-local path_session_save = hs.configdir .. '/sessions.sav'
-local path_config = hs.configdir .. '/sessions.cfg'
+local path_session_save = hs.configdir .. '/sessions-control-hammerspoon/sessions.sav'
+local path_config = hs.configdir .. '/sessions-control-hammerspoon/sessions.cfg'
 
 
 --[[
@@ -45,7 +45,7 @@ function sessionsShow()
 		local msg = ''
 		for k, v in pairs(sessions) do
 			if current == k then msg = msg .. '->' end
-			msg = msg .. v[index_session] .. '\t'
+			msg = msg .. k .. ':' .. v[index_session] .. '(' .. #v[index_windows] .. ')' .. '  '
 		end
 		hs.notify.new({title='Sessions List:', informativeText=msg}):send():release()
 	else
@@ -82,14 +82,61 @@ function sessionSwitch(new)
 end
 
 
+function sessionsReload()
+	local file_config = io.open(path_config, "r")
+	if file_config then
+		new_sessions = {}
+		for line in file_config:lines() do
+			line = line:gsub("%s+", "")
+			if line:sub(1, 2) == '--' or line:sub(1, 1) == '\n' then
+				;
+			elseif line ~= '' then
+				local key = findNameInSessions(sessions, line)
+				if key then
+					table.insert(new_sessions, sessions[key])
+				else
+					table.insert(new_sessions, {line, {}})
+				end
+			end
+		end
+		sessions = new_sessions
+		new_sessions = nil
+		sessionsShow()
+	else
+		hs.notify.new({title='Read config file ' .. sessions[cur][index_session],
+					  informativeText='Config file no found'})
+					 :send():release()
+	end
+end
+
+
+function sessionsToConfig(se)
+-- Only run when hammerspoon reload
+-- each line as a session name
+-- Sync the sessions to config file
+	local sessions_to_save = ''
+	for k, v in pairs(se) do
+		sessions_to_save = sessions_to_save .. v[1] .. '\n'
+	end
+
+	local file_sessions = assert(io.open(path_config, "w"))
+	local err, msg = file_sessions:write(sessions_to_save)
+	if not err then
+		hs.notify.new({title='Write Error', informativeText='Can not sync sessions to config file'}):send():release()
+		error('Save sessions error: ' .. msg)
+	end
+	file_sessions:flush()
+	file_sessions:close()
+end
+
+
 function sessionsRead()
 	local file_sessions = io.open(path_session_save, "r")
 	if file_sessions then
 		local close_win_counter = 0
 		for line in file_sessions:lines() do
-			if line:sub(1, 2) == '--' then
-				;
-			elseif line:sub(1, 2) == '##' then
+			line = line:gsub("%s+", "")
+			if line:sub(1, 2) == '--' or line:sub(1, 1) == '\n' then
 				;
 			elseif line:sub(1, 1) == '{' then
 				if #line < 2 then
@@ -154,20 +201,20 @@ function sessionsSave(se)
 -- use a '{session ' start a scope,
 -- each line as a win
 -- end a scope using '}'
-	local session_to_save = ''
+	local sessions_to_save = ''
 	for k, v in pairs(se) do
 		local one_session = '{' .. v[index_session] .. '\n'
 		for key, val in pairs(v[index_windows]) do
 			one_session = one_session .. val[index_win]:id() .. ':' .. (val[index_isFull] and '1' or '0') .. '\n'
 		end
 		one_session = one_session .. '}' .. '\n'
-		session_to_save = session_to_save .. one_session
+		sessions_to_save = sessions_to_save .. one_session
 	end
 
-	session_to_save = session_to_save .. '>' .. current .. '\n'
+	sessions_to_save = sessions_to_save .. '>' .. current .. '\n'
 
 	local file_sessions = assert(io.open(path_session_save, "w"))
-	local err, msg = file_sessions:write(session_to_save)
+	local err, msg = file_sessions:write(sessions_to_save)
 	if not err then
 		hs.notify.new({title='Write Error', informativeText='Can not save sessions to disk'}):send():release()
 		error('Save sessions error: ' .. msg)
@@ -179,7 +226,7 @@ end
 
 -- Window handling
 function winDelFromSession(win, cur)
-	local key = findInList(sessions[cur][index_windows], win)
+	local key = findWinIdInSession(sessions[cur][index_windows], win)
 	if key then
 		table.remove(sessions[cur][index_windows], key)
 		hs.notify.new({title='Del window from ' .. sessions[cur][index_session],
@@ -192,7 +239,7 @@ function winDelFromSession(win, cur)
 end
 
 function winAddToSession(win, cur)
-	if findInList(sessions[cur][index_windows], win) then
+	if findWinIdInSession(sessions[cur][index_windows], win) then
 		hs.notify.new({title='Add window to ' .. sessions[cur][index_session],
 					  informativeText='Already added'}):send():release()
 		-- found win, return.
@@ -213,14 +260,29 @@ end
 utils
 --]]
 
-function findInList(list, item)
-	if list then
+-- List: Current session
+-- item: Window
+function findWinIdInSession(list, item)
+	if list and item then
 		for k, v in pairs(list) do
 			if item:id() == v[1]:id() then return k end
 		end
 	end
 	return nil
 end
+
+-- List: All sessions
+-- item: session name
+function findNameInSessions(list, item)
+	if list and item then
+		for k, v in pairs(list) do
+			if item == v[1] then return k end
+		end
+	end
+	return nil
+end
+
+
 
 -- Handling sav file
 -- '--' means comment
